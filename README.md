@@ -122,7 +122,7 @@
       public void onStart(ServerConfig serverConfig) {
          serverConfig.setDbUuid(DbUuid.BINARY);
       }
--  }
+   }
    ```
 
 1. Create models.dto package and create WidgetRequest.
@@ -177,7 +177,6 @@
    public interface WidgetService {
 
       Widget create(WidgetRequest request);
-
 
       List<Widget> list(String make, String model);
 
