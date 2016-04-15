@@ -1,3 +1,5 @@
+Here are the notes I used for live coding. You can download the slides from <https://github.com/qvaughan/greenjug-widget-api/blob/master/Let's%20Play!.pdf>
+
 1. Start by creating the widget-api project in Activator.
     * activator new
 1. Open IntelliJ
