@@ -1,8 +1,8 @@
-- Start by creating the widget-api project in Activator.
-    - activator new
-- Open IntelliJ
-- Update project/plugins.sbt, uncomment
-addSbtPlugin("com.typesafe.sbt" % "sbt-play-ebean" % "1.0.0")
+1. Start by creating the widget-api project in Activator.
+    * activator new
+1. Open IntelliJ
+1. Update project/plugins.sbt, uncomment
+    * addSbtPlugin("com.typesafe.sbt" % "sbt-play-ebean" % "1.0.0")
 - Change the plugin version to 3.0.0.
 - Update build.sbt with
     - .enablePlugins(PlayJava, PlayEbean)
