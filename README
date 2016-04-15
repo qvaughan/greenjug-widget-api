@@ -1,49 +1,332 @@
-This is your new Play application
-=================================
+- Start by creating the widget-api project in Activator.
+    - activator new
+- Open IntelliJ
+- Update project/plugins.sbt, uncomment
+addSbtPlugin("com.typesafe.sbt" % "sbt-play-ebean" % "1.0.0")
+- Change the plugin version to 3.0.0.
+- Update build.sbt with
+    - .enablePlugins(PlayJava, PlayEbean)
+    - "mysql"                           % "mysql-connector-java"                % "5.1.36",
 
-This file will be packaged with your application when using `activator dist`.
+- Create the widgets schema in MySQL
+- Update application.conf with database configurations — Point out you can also make settings inside of application.conf as environment variables or override in separate files via import.
+play.evolutions {
 
-There are several demonstration files available in this template.
+-   autoApply="true"
+- }
+db.default {
 
-Controllers
-===========
+-   driver="com.mysql.jdbc.Driver"
+-   url="jdbc:mysql://127.0.0.1:3306/widgets"
+-   username="root"
+-   password="password"
+- }
 
-- HomeController.java:
+- Create the evolutions file for creating the Widget table.
+    - Create conf/evolutions/default directory
+    - Create 1.sql
+# --- !Ups
 
-  Shows how to handle simple HTTP requests.
+    - CREATE TABLE Widget (
+    -   id varbinary(16) primary key,
+    -   make varchar(255) not null,
+    -   model varchar(255) not null
+    - );
 
-- AsyncController.java:
+    - # --- !Downs
 
-  Shows how to do asynchronous programming when handling a request.
+    - DROP TABLE Widget;
 
-- CountController.java:
+- Create the model class for Widget.
+    - Create models.db package
+    - Create Model class, with id, make, model as properties and a constructor with no args, all props, and (make, model)
+package models.db;
 
-  Shows how to inject a component into a controller and use the component when
-  handling requests.
+    - import com.avaje.ebean.Model;
+    - import java.util.UUID;
+    - import javax.persistence.Entity;
+    - import javax.persistence.Id;
+    - /**
+ * @author Michael Vaughan
+    -  */
+@Entity
+public class Widget extends Model {
 
-Components
-==========
+    -     @Id
+    -     private UUID id;
+    -     private String make;
+    -     private String model;
+    -
 
-- Module.java:
+    public Widget(UUID id, String make, String model) {
+    -         this.id = id;
+    -         this.make = make;
+    -         this.model = model;
+    -     }
+    public Widget(String make, String model) {
 
-  Shows how to use Guice to bind all the components needed by your application.
+    -         this.make = make;
+    -         this.model = model;
+    -     }
+    public Widget() {
 
-- Counter.java:
+    -     }
 
-  An example of a component that contains state, in this case a simple counter.
 
-- ApplicationTimer.java:
+    public UUID getId() {
+    -         return id;
+    -     }
 
-  An example of a component that starts when the application starts and stops
-  when the application stops.
+    -     public void setId(UUID id) {
+    -         this.id = id;
+    -     }
 
-Filters
-=======
+    -     public String getMake() {
+    -         return make;
+    -     }
 
-- Filters.java:
+    -     public void setMake(String make) {
+    -         this.make = make;
+    -     }
 
-  Creates the list of HTTP filters used by your application.
+    -     public String getModel() {
+    -         return model;
+    -     }
 
-- ExampleFilter.java
+    -     public void setModel(String model) {
+    -         this.model = model;
+    -     }
 
-  A simple filter that adds a header to every response.
+    - }
+
+    - update application.conf with ebean directory.
+ebean.default=["models.db.*"]
+
+- Add ServerConfigStartup to use binary UUIDs
+package models.db;
+
+- import com.avaje.ebean.config.ServerConfig;
+- import com.avaje.ebean.config.ServerConfig.DbUuid;
+- import com.avaje.ebean.event.ServerConfigStartup;
+
+- /**
+ * @author Michael Vaughan
+-  */
+public class WidgetsServerConfigStartup implements ServerConfigStartup {
+
+-     @Override
+-     public void onStart(ServerConfig serverConfig) {
+-         serverConfig.setDbUuid(DbUuid.BINARY);
+-     }
+- }
+
+- Create models.dto package and create WidgetRequest.
+package models.dto;
+
+- import models.db.Widget;
+
+- /**
+ * @author Michael Vaughan
+-  */
+public class WidgetRequest {
+
+-     private String make;
+-     private String model;
+
+-     public String getMake() {
+-         return make;
+-     }
+
+-     public void setMake(String make) {
+-         this.make = make;
+-     }
+
+-     public String getModel() {
+-         return model;
+-     }
+
+-     public void setModel(String model) {
+-         this.model = model;
+-     }
+
+-     public Widget toWidget() {
+-         return new Widget(make, model);
+-     }
+- }
+
+- Create Widget Service interface, add methods to create a Widget, list Widgets, get a Widget, update a widget.
+package services;
+
+- import models.db.Widget;
+- import models.dto.WidgetRequest;
+- import java.util.List;
+- import java.util.UUID;
+- /**
+ * @author Michael Vaughan
+-  */
+public interface WidgetService {
+
+-     Widget create(WidgetRequest request);
+-
+
+    List<Widget> list(String make, String model);
+
+-     Widget get(UUID id);
+
+- }
+
+- Create Widget Service Implementation.
+    - Create services.impl package.
+    - Create WidgetServiceImpl
+package services.impl;
+
+    - import com.avaje.ebean.Ebean;
+    - import com.avaje.ebean.ExpressionList;
+    - import models.db.Widget;
+    - import models.dto.WidgetRequest;
+    - import services.WidgetService;
+    - import java.util.List;
+    - import java.util.UUID;
+    - /**
+ * @author Michael Vaughan
+    -  */
+public class WidgetServiceImpl implements WidgetService {
+
+    -     @Override
+    -     public Widget create(WidgetRequest request) {
+    -         Widget widget = request.toWidget();
+    -         widget.save();
+    -         return widget;
+    -     }
+
+    -     @Override
+    -     public List<Widget> list(String make, String model) {
+    -         ExpressionList<Widget> el = Ebean.find(Widget.class).where();
+    -         if (make != null) {
+    -             el = el.eq("make", make);
+    -         }
+    -         if (model != null) {
+    -             el = el.eq("model", model);
+    -         }
+    -         return el.findList();
+    -     }
+    -
+
+    @Override
+        public Widget get(UUID id) {
+    -         return Ebean.find(Widget.class).where().idEq(id).findUnique();
+    -     }
+
+
+}
+
+- Wire up WidgetService to WidgetServiceImpl in Module.
+
+
+        bind(WidgetService.class).to(WidgetServiceImpl.class);
+
+- Create Widget controller to create a widget.
+package controllers;
+
+- import models.db.Widget;
+- import models.dto.WidgetRequest;
+- import play.libs.Json;
+- import play.mvc.Controller;
+- import play.mvc.Result;
+- import services.WidgetService;
+- import javax.inject.Inject;
+- /**
+ * @author Michael Vaughan
+-  */
+public class WidgetController extends Controller {
+
+-     @Inject
+-     private WidgetService widgetService;
+-
+
+
+
+    public Result create() {
+-    WidgetRequest widgetRequest = Json.fromJson(request().body().asJson(), WidgetRequest.class);
+-         Widget widget = widgetService.create(widgetRequest);
+-         return ok(Json.toJson(widget));
+-     }
+
+- }
+
+- Add route to to top of routes for creating a widget.
+POST    /widgets                        controllers.WidgetController.create
+
+- Use Postman to create a widget. ( 1. Create Widget )
+
+- Add 2.sql evolution to add color column to the Widget table.
+# --- !Ups
+
+- ALTER TABLE Widget ADD COLUMN color VARCHAR(255);
+- # --- !Downs
+
+- ALTER TABLE Widget DROP COLUMN color;
+
+- Add color property, getter/setter, and update non-id constructor to models.db.Widget.
+
+- Add color property and getter/setter, and update toWidget() in dto.WidgetRequest.
+
+- Create a widget in Postman with color property specified.
+
+- Update Widget Controller to list Widgets.
+public Result list(String make, String model) {
+
+-     List<Widget> widgets = widgetService.list(make, model, color);
+-     return ok(Json.toJson(widgets));
+- }
+
+- Update WidgetService and WidgetServiceImpl to allow color on list method.
+
+- Update routes to list widgets, allowing filtering with query string.
+GET         /widgets             controllers.WidgetController.list(make: String ?= null, model: String ?= null, color: String ?= null)
+
+- Demonstrate listing widgets with Postman, including filtering by make and model. (2. List Widgets)
+
+- Update Widget Controller to retrieve a specific widget.
+public Result get(UUID id) {
+
+-     return ok(Json.toJson(widgetService.get(id)));
+- }
+
+- Update routes to update a specific widget.
+GET         /widgets/:id            controllers.WidgetController.get(id: java.util.UUID)
+
+- Demonstrate getting a specific widget with Postman.
+
+- Add annotation for action to authenticate a secret bearer token.
+    - Create actions package.
+    - Add class MagicWordAuth
+package actions;
+
+    - import play.mvc.Action;
+    - import play.mvc.Http.Context;
+    - import play.mvc.Http.Request;
+    - import play.mvc.Result;
+
+    - import java.util.concurrent.CompletableFuture;
+    - import java.util.concurrent.CompletionStage;
+
+    - /**
+ * @author Michael Vaughan
+    -  */
+public class MagicWordAuth extends Action.Simple {
+
+    -     @Override
+    -     public CompletionStage<Result> call(Context context) {
+    -         Request request = context.request();
+    -         if ("please".equalsIgnoreCase(request.getHeader("Authorization"))) {
+    -             return delegate.call(context);
+    -         }
+    -         return CompletableFuture.completedFuture(unauthorized(“You didn’t say the magic word."));
+    -     }
+    - }
+
+- Update the create/update widget paths to require the secret bearer token annotation.
+@With(MagicWordAuth.class)
+
+- Attempt to Create a widget in Postman with and without the “please” Authorization header.
