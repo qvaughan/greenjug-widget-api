@@ -232,7 +232,7 @@
    ```
 
 1. Wire up WidgetService to WidgetServiceImpl in Module.
-   ```bind(WidgetService.class).to(WidgetServiceImpl.class);```
+   `bind(WidgetService.class).to(WidgetServiceImpl.class);`
 
 1. Create Widget controller to create a widget.
    ```
